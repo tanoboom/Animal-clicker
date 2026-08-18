@@ -1,0 +1,31 @@
+{
+  "name": "¿Qué animal sos? — Test de velocidad",
+  "short_name": "Animal Clicker",
+  "description": "Tocá lo más rápido que puedas en 30 segundos y descubrí qué animal veloz sos.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1b23",
+  "theme_color": "#0d1b23",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

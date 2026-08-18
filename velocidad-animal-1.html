@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>¿Qué animal sos? — Test de velocidad</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0d1b23" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% -10%, #16303a 0%, #0d1b23 45%, #08131a 100%);
+    color: #eef1f4;
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Escena de fondo: horizonte de sabana al atardecer + líneas de velocidad */
+  .bg-scene {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bg-scene .sun {
+    position: absolute;
+    left: 50%;
+    top: 18%;
+    width: 240px;
+    height: 240px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(242,177,52,0.35) 0%, rgba(242,177,52,0.08) 55%, transparent 75%);
+    filter: blur(2px);
+  }
+  .bg-scene .streaks {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      100deg,
+      rgba(233,79,55,0.05) 0px,
+      rgba(233,79,55,0.05) 2px,
+      transparent 2px,
+      transparent 90px
+    );
+    animation: drift 9s linear infinite;
+    opacity: 0.5;
+  }
+  @keyframes drift {
+    from { background-position: 0 0; }
+    to { background-position: -400px 0; }
+  }
+  .bg-scene svg.horizon {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 42%;
+    display: block;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 36px 22px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem;
+    letter-spacing: 0.03em;
+    margin: 0;
+    color: #f2b134;
+    line-height: 1;
+  }
+  header p {
+    color: #7c8f97;
+    font-size: 0.9rem;
+    margin: 8px 0 0;
+    letter-spacing: 0.02em;
+  }
+
+  .scoreboard {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 30px;
+  }
+  .stat {
+    flex: 1;
+    background: #101f27;
+    border: 1px solid #1f333c;
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat .num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: #eef1f4;
+    line-height: 1;
+  }
+  .stat.time .num { color: #e94f37; }
+  .stat .lbl {
+    font-size: 0.7rem;
+    color: #6c7d85;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  #target {
+    position: relative;
+    width: min(64vw, 260px);
+    height: min(64vw, 260px);
+    border-radius: 50%;
+    border: none;
+    background: radial-gradient(circle at 35% 30%, #22414c 0%, #142731 60%, #0c1a20 100%);
+    box-shadow: 0 0 0 6px #1c2f37, 0 0 40px rgba(233,79,55,0.15);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 70ms ease, box-shadow 120ms ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  #target.pulse {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 6px #2b4048, 0 0 55px rgba(233,79,55,0.35);
+  }
+  #target .core {
+    width: 42%;
+    height: 42%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #f2b134 0%, #e94f37 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: #0d1b23;
+    letter-spacing: 0.03em;
+    text-align: center;
+  }
+  #target[disabled] { cursor: default; opacity: 0.55; }
+
+  .burst {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f2b134;
+    box-shadow: 0 0 8px 2px rgba(242,177,52,0.8);
+    animation: burstfly 480ms ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes burstfly {
+    to { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+  }
+
+  .hint {
+    color: #5c6b73;
+    font-size: 0.85rem;
+    margin-top: 22px;
+    text-align: center;
+    min-height: 1.2em;
+  }
+
+  /* Resultado */
+  .result {
+    display: none;
+    width: 100%;
+    max-width: 420px;
+    margin-top: 10px;
+    flex-direction: column;
+    align-items: center;
+    animation: fadein 420ms ease;
+  }
+  .result.show { display: flex; }
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result .icon-wrap {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: #101f27;
+    border: 1px solid #1f333c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+  .result .animal-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem;
+    letter-spacing: 0.02em;
+    color: #f2b134;
+    margin: 0;
+    text-align: center;
+  }
+  .result .animal-msg {
+    color: #b8c4c9;
+    font-size: 0.95rem;
+    text-align: center;
+    margin: 8px 0 20px;
+    max-width: 340px;
+    line-height: 1.4;
+  }
+  .result .breakdown {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 26px;
+  }
+  .result .breakdown div { text-align: center; }
+  .result .breakdown .n {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    color: #eef1f4;
+  }
+  .result .breakdown .l {
+    font-size: 0.68rem;
+    color: #6c7d85;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  #again {
+    background: #e94f37;
+    color: #0d1b23;
+    border: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 13px 30px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 90ms ease, background 150ms ease;
+  }
+  #again:hover { background: #f2664c; }
+  #again:active { transform: scale(0.96); }
+
+  .scale {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 420px;
+    margin-top: 34px;
+    gap: 6px;
+  }
+  .scale .step {
+    flex: 1;
+    text-align: center;
+    opacity: 0.45;
+    transition: opacity 200ms ease;
+  }
+  .scale .step.active { opacity: 1; }
+  .scale .step svg { width: 26px; height: 26px; }
+  .scale .step span {
+    display: block;
+    font-size: 0.62rem;
+    color: #6c7d85;
+    margin-top: 4px;
+  }
+
+  button:focus-visible { outline: 2px solid #f2b134; outline-offset: 3px; }
+
+  .music-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 3;
+    display: flex;
+    gap: 8px;
+  }
+  .music-toggle button {
+    background: #101f27;
+    border: 1px solid #1f333c;
+    color: #eef1f4;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .music-toggle button:hover { border-color: #f2b134; }
+  .music-toggle button.active { border-color: #f2b134; color: #f2b134; }
+  .music-panel {
+    position: fixed;
+    top: 60px;
+    right: 16px;
+    z-index: 3;
+    width: 260px;
+    max-width: calc(100vw - 32px);
+    background: #101f27;
+    border: 1px solid #1f333c;
+    border-radius: 14px;
+    padding: 10px;
+    display: none;
+  }
+  .music-panel.show { display: block; }
+  .music-panel iframe {
+    border-radius: 10px;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+<div class="music-toggle">
+  <button id="btnBorderline">🎵 Borderline</button>
+  <button id="btnSeeYouAgain">🎵 See You Again</button>
+</div>
+<div class="music-panel" id="musicPanel">
+  <iframe id="musicFrame" src=""
+    width="100%" height="152" frameBorder="0" allowfullscreen=""
+    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+</div>
+<div class="bg-scene">
+  <div class="sun"></div>
+  <div class="streaks"></div>
+  <svg class="horizon" viewBox="0 0 400 140" preserveAspectRatio="none">
+    <path d="M0 90 Q60 60 120 78 T240 70 T400 85 V140 H0 Z" fill="#12242c" opacity="0.9"/>
+    <path d="M0 110 Q80 90 160 105 T400 100 V140 H0 Z" fill="#0c1a20"/>
+    <g opacity="0.5" fill="#0c1a20">
+      <ellipse cx="60" cy="118" rx="10" ry="3"/>
+      <ellipse cx="90" cy="122" rx="7" ry="2.4"/>
+      <ellipse cx="300" cy="120" rx="9" ry="3"/>
+      <ellipse cx="340" cy="124" rx="6" ry="2"/>
+    </g>
+  </svg>
+</div>
+<div class="wrap">
+  <header>
+    <h1>¿Qué animal sos?</h1>
+    <p>tocá el círculo para arrancar · tenés 30 segundos</p>
+  </header>
+
+  <div class="scoreboard">
+    <div class="stat time">
+      <div class="num" id="timeNum">30.0</div>
+      <div class="lbl">segundos</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="clickNum">0</div>
+      <div class="lbl">clics</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="cpsNum">0.0</div>
+      <div class="lbl">clics/seg</div>
+    </div>
+  </div>
+
+  <button id="target" aria-label="Tocar para clickear">
+    <span class="core" id="coreLabel">TOCÁ<br/>PARA<br/>EMPEZAR</span>
+  </button>
+
+  <p class="hint" id="hint">el cronómetro arranca con tu primer clic</p>
+
+  <div class="result" id="result">
+    <div class="icon-wrap" id="iconWrap"></div>
+    <h2 class="animal-name" id="animalName">—</h2>
+    <p class="animal-msg" id="animalMsg">—</p>
+    <div class="breakdown">
+      <div><div class="n" id="finalClicks">0</div><div class="l">clics totales</div></div>
+      <div><div class="n" id="finalCps">0.0</div><div class="l">clics/seg</div></div>
+    </div>
+    <button id="again">Jugar de nuevo</button>
+  </div>
+
+  <div class="scale" id="scale"></div>
+</div>
+
+<script>
+  const ANIMALS = [
+    {
+      id: "tortuga",
+      name: "Tortuga",
+      max: 1,
+      msg: "Con calma se llega lejos, pero acá jugamos contra el reloj. ¡Probá de nuevo y metele más ritmo!",
+      icon: `<svg viewBox="0 0 100 100"><ellipse cx="50" cy="58" rx="34" ry="24" fill="#4a7c59"/><ellipse cx="50" cy="58" rx="34" ry="24" fill="none" stroke="#2f5940" stroke-width="2"/><circle cx="50" cy="58" r="8" fill="#2f5940"/><circle cx="34" cy="50" r="6" fill="#2f5940"/><circle cx="66" cy="50" r="6" fill="#2f5940"/><circle cx="38" cy="70" r="6" fill="#2f5940"/><circle cx="62" cy="70" r="6" fill="#2f5940"/><circle cx="85" cy="56" r="9" fill="#4a7c59"/><ellipse cx="20" cy="42" rx="7" ry="5" fill="#4a7c59"/><ellipse cx="78" cy="42" rx="7" ry="5" fill="#4a7c59"/><ellipse cx="20" cy="74" rx="7" ry="5" fill="#4a7c59"/><ellipse cx="78" cy="74" rx="7" ry="5" fill="#4a7c59"/></svg>`
+    },
+    {
+      id: "perro",
+      name: "Perro",
+      max: 3,
+      msg: "Ritmo constante y confiable, como quien te espera meneando la cola. Con un poco más de garra llegás al águila.",
+      icon: `<svg viewBox="0 0 100 100"><ellipse cx="48" cy="60" rx="30" ry="20" fill="#c98a4b"/><circle cx="76" cy="46" r="16" fill="#c98a4b"/><path d="M64 34 L58 20 L70 30 Z" fill="#c98a4b"/><path d="M88 34 L96 20 L84 30 Z" fill="#c98a4b"/><circle cx="82" cy="44" r="2.5" fill="#3a2416"/><ellipse cx="90" cy="52" rx="4" ry="3" fill="#3a2416"/><path d="M18 60 Q6 50 14 42" stroke="#c98a4b" stroke-width="7" fill="none" stroke-linecap="round"/></svg>`
+    },
+    {
+      id: "aguila",
+      name: "Águila",
+      max: 5,
+      msg: "Volás alto y rápido, con precisión de cazadora. Un empujón más y alcanzás la velocidad del pez espada.",
+      icon: `<svg viewBox="0 0 100 100"><path d="M50 30 L10 55 L38 58 L50 78 L62 58 L90 55 Z" fill="#d9d2c4"/><circle cx="50" cy="40" r="9" fill="#e8c15a"/><path d="M50 32 L44 42 L56 42 Z" fill="#c9622f"/></svg>`
+    },
+    {
+      id: "pez",
+      name: "Pez espada",
+      max: 7,
+      msg: "Cortás el agua como una espada. Casi rozás el límite de la velocidad pura, la chita.",
+      icon: `<svg viewBox="0 0 100 100"><path d="M18 50 L70 38 Q88 44 92 50 Q88 56 70 62 Z" fill="#3b7c93"/><path d="M2 50 L18 50 L10 44 Z" fill="#3b7c93"/><path d="M55 38 Q60 24 68 20 Q64 34 60 40 Z" fill="#2f6579"/><path d="M55 62 Q60 76 68 80 Q64 66 60 60 Z" fill="#2f6579"/><path d="M92 50 L86 46 L86 54 Z" fill="#2f6579"/></svg>`
+    },
+    {
+      id: "chita",
+      name: "Chita",
+      max: Infinity,
+      msg: "Sos pura velocidad, el animal terrestre más rápido del planeta. Nadie te alcanza el ritmo.",
+      icon: `<svg viewBox="0 0 100 100"><ellipse cx="50" cy="52" rx="34" ry="16" fill="#e8b04a"/><circle cx="78" cy="42" r="12" fill="#e8b04a"/><path d="M18 46 Q4 36 8 26" stroke="#e8b04a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M30 64 L24 82" stroke="#e8b04a" stroke-width="7" stroke-linecap="round"/><path d="M46 66 L54 84" stroke="#e8b04a" stroke-width="7" stroke-linecap="round"/><path d="M62 62 L72 78" stroke="#e8b04a" stroke-width="7" stroke-linecap="round"/><circle cx="42" cy="48" r="2.4" fill="#5a3a1a"/><circle cx="54" cy="56" r="2.2" fill="#5a3a1a"/><circle cx="30" cy="54" r="2" fill="#5a3a1a"/><circle cx="72" cy="40" r="2" fill="#5a3a1a"/></svg>`
+    },
+  ];
+
+  let phase = "idle"; // idle | running | done
+  let clicks = 0;
+  let startTime = null;
+  const DURATION = 30;
+
+  const targetEl = document.getElementById("target");
+  const coreLabelEl = document.getElementById("coreLabel");
+  const timeNumEl = document.getElementById("timeNum");
+  const clickNumEl = document.getElementById("clickNum");
+  const cpsNumEl = document.getElementById("cpsNum");
+  const hintEl = document.getElementById("hint");
+  const resultEl = document.getElementById("result");
+  const iconWrapEl = document.getElementById("iconWrap");
+  const animalNameEl = document.getElementById("animalName");
+  const animalMsgEl = document.getElementById("animalMsg");
+  const finalClicksEl = document.getElementById("finalClicks");
+  const finalCpsEl = document.getElementById("finalCps");
+  const scaleEl = document.getElementById("scale");
+  const againBtn = document.getElementById("again");
+
+  function buildScale() {
+    scaleEl.innerHTML = "";
+    ANIMALS.forEach((a) => {
+      const step = document.createElement("div");
+      step.className = "step";
+      step.id = "step-" + a.id;
+      step.innerHTML = a.icon + `<span>${a.name}</span>`;
+      scaleEl.appendChild(step);
+    });
+  }
+  buildScale();
+
+  function animalFor(cps) {
+    return ANIMALS.find((a) => cps <= a.max) || ANIMALS[ANIMALS.length - 1];
+  }
+
+  function spawnBurst(x, y) {
+    const b = document.createElement("span");
+    b.className = "burst";
+    b.style.left = x + "px";
+    b.style.top = y + "px";
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 30;
+    b.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+    b.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+    targetEl.appendChild(b);
+    setTimeout(() => b.remove(), 480);
+  }
+
+  let rafId = null;
+  function tick() {
+    const elapsed = (Date.now() - startTime) / 1000;
+    const remaining = Math.max(0, DURATION - elapsed);
+    timeNumEl.textContent = remaining.toFixed(1);
+    const cps = elapsed > 0 ? clicks / Math.min(elapsed, DURATION) : 0;
+    cpsNumEl.textContent = cps.toFixed(1);
+
+    if (remaining <= 0) {
+      endGame();
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function startGame() {
+    phase = "running";
+    startTime = Date.now();
+    coreLabelEl.innerHTML = "¡DALE!";
+    hintEl.textContent = "¡seguí tocando hasta que se acabe el tiempo!";
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function endGame() {
+    phase = "done";
+    cancelAnimationFrame(rafId);
+    timeNumEl.textContent = "0.0";
+    targetEl.disabled = true;
+    coreLabelEl.innerHTML = "TIEMPO";
+
+    const cps = clicks / DURATION;
+    const animal = animalFor(cps);
+
+    iconWrapEl.innerHTML = animal.icon;
+    animalNameEl.textContent = "Sos una/un " + animal.name;
+    animalMsgEl.textContent = animal.msg;
+    finalClicksEl.textContent = clicks;
+    finalCpsEl.textContent = cps.toFixed(1);
+
+    document.querySelectorAll(".scale .step").forEach((s) => s.classList.remove("active"));
+    document.getElementById("step-" + animal.id).classList.add("active");
+
+    resultEl.classList.add("show");
+    hintEl.textContent = "";
+  }
+
+  function resetGame() {
+    phase = "idle";
+    clicks = 0;
+    startTime = null;
+    targetEl.disabled = false;
+    coreLabelEl.innerHTML = "TOCÁ<br/>PARA<br/>EMPEZAR";
+    timeNumEl.textContent = "30.0";
+    clickNumEl.textContent = "0";
+    cpsNumEl.textContent = "0.0";
+    hintEl.textContent = "el cronómetro arranca con tu primer clic";
+    resultEl.classList.remove("show");
+    document.querySelectorAll(".scale .step").forEach((s) => s.classList.remove("active"));
+  }
+
+  targetEl.addEventListener("click", (e) => {
+    if (phase === "done") return;
+    if (phase === "idle") startGame();
+
+    clicks += 1;
+    clickNumEl.textContent = clicks;
+
+    targetEl.classList.add("pulse");
+    setTimeout(() => targetEl.classList.remove("pulse"), 70);
+
+    const rect = targetEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    spawnBurst(x, y);
+  });
+
+  againBtn.addEventListener("click", resetGame);
+
+  const TRACKS = {
+    borderline: "22GGPbT07KhFLIOLPjiEdh",
+    seeYouAgain: "7v5UK0feywwgfvPQOhoONp",
+  };
+  const musicFrame = document.getElementById("musicFrame");
+  const musicPanel = document.getElementById("musicPanel");
+  const btnBorderline = document.getElementById("btnBorderline");
+  const btnSeeYouAgain = document.getElementById("btnSeeYouAgain");
+
+  function playTrack(trackId, btn) {
+    const alreadyOpen = musicPanel.classList.contains("show");
+    const sameBtn = btn.classList.contains("active");
+    [btnBorderline, btnSeeYouAgain].forEach((b) => b.classList.remove("active"));
+
+    if (alreadyOpen && sameBtn) {
+      musicPanel.classList.remove("show");
+      musicFrame.src = "";
+      return;
+    }
+    btn.classList.add("active");
+    musicFrame.src = `https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`;
+    musicPanel.classList.add("show");
+  }
+
+  btnBorderline.addEventListener("click", () => playTrack(TRACKS.borderline, btnBorderline));
+  btnSeeYouAgain.addEventListener("click", () => playTrack(TRACKS.seeYouAgain, btnSeeYouAgain));
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
